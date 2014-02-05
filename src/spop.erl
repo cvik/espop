@@ -6,6 +6,9 @@
 
 -record(state, {spop_version, socket}).
 
+-define(HOST, localhost).
+-define(PORT, 6602).
+
 %% Management Api -------------------------------------------------------------
 
 start_link() ->
@@ -88,9 +91,6 @@ shuffle() ->
 status() ->
     send(status, []).
 
-idle() ->
-    send(idle, [], infinity).
-
 image() ->
     send(image, []).
 
@@ -109,6 +109,9 @@ bye() ->
 exit() ->
     send(exit, []).
 
+watch() ->
+    gen_server:cast(?MODULE, {watch, self()}).
+
 %% gen_server callbacks -------------------------------------------------------
 
 init([Server, Port]) ->
@@ -117,25 +120,15 @@ init([Server, Port]) ->
     {ok, Version} = gen_tcp:recv(S, 0),
     {ok, #state{spop_version=Version, socket=S}}.
 
-handle_call({ls, []}, _, #state{socket=S} = State) ->
-    gen_tcp:send(S, <<"ls", 10>>),
-    Response = recv_all(S, 1, []),
-    {reply, Response, State};
-handle_call({status, []}, _, #state{socket=S} = State) ->
-    gen_tcp:send(S, <<"status", 10>>),
-    Response = recv_all(S, 1, []),
-    {reply, Response, State};
-handle_call({toggle, []}, _, #state{socket=S} = State) ->
-    gen_tcp:send(S, <<"toggle", 10>>),
-    Response = recv_all(S, 1, []),
-    {reply, Response, State};
-handle_call({idle, []}, _, #state{socket=S} = State) ->
-    gen_tcp:send(S, <<"idle", 10>>),
-    Response = recv_all(S, 1, []),
-    {reply, Response, State};
 handle_call(_, _, State) ->
     {noreply, State}.
 
+handle_cast({watch, Pid}, #state{socket=S} = State) ->
+    gen_tcp:send(S, <<"idle", 10>>),
+    Response = recv_all(S, 1, []),
+    Pid ! {spop_event, Response},
+    gen_server:cast(?MODULE, {watch, Pid}),
+    {noreply, State};
 handle_cast(_, State) ->
     {noreply, State}.
 
@@ -151,10 +144,27 @@ code_change(_, State) ->
 %% Internal -------------------------------------------------------------------
 
 send(Cmd, Args) ->
-    send(Cmd, Args, 10000).
+    send(Cmd, Args, ?HOST, ?PORT).
 
-send(Cmd, Args, Timeout) ->
-    gen_server:call(?MODULE, {Cmd, Args}, Timeout).
+send(Cmd, Args, Host, Port) ->
+    Ops = [binary, {packet, 0}, {active, false}],
+    {ok, S} = gen_tcp:connect(Host, Port, Ops),
+    {ok, _Version} = gen_tcp:recv(S, 0),
+    CmdBin = pack_command(Cmd, Args),
+    ok = gen_tcp:send(S, <<CmdBin/binary, 10>>),
+    Data = recv_all(S, 1, []),
+    ok = gen_tcp:send(S, <<"bye", 10>>),
+    gen_tcp:close(S),
+    Data.
+
+pack_command(Cmd, Args) ->
+    Str = string:join([to_string(Cmd) | [ to_string(A) || A <- Args ] ], " "),
+    list_to_binary(Str).
+
+to_string(T) when is_integer(T) -> integer_to_list(T);
+to_string(T) when is_float(T) -> float_to_list(T);
+to_string(T) when is_atom(T) -> atom_to_list(T);
+to_string(T) when is_binary(T) -> binary_to_list(T).
 
 recv_all(_, 0, Acc) ->
     {ok, Json, []} = rfc4627:decode(iolist_to_binary(lists:reverse(Acc))),
@@ -172,7 +182,7 @@ recv_all(S, Cnt, Acc) ->
             iolist_to_binary(lists:reverse(Acc))
     end.
 
-%% Internal -------------------------------------------------------------------
+%% Data Parsing ----------------------------------------------------------------
 
 -record(playlist, {index, name, type, num_tracks, offline}).
 
@@ -186,7 +196,7 @@ parse_playlist(Pl) ->
             Name = proplists:get_value("name", Pl),
             NumTracks = proplists:get_value("tracks", Pl),
             Offline = proplists:get_value("offline", Pl),
-            #playlist{index=Index, name=unicode:Name, type=Type,
+            #playlist{index=Index, name=Name, type=Type,
                       num_tracks=NumTracks, offline=Offline};
         <<"folder">> ->
             Playlists = proplists:get_value("playlists", Pl),
