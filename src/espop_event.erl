@@ -47,7 +47,7 @@ handle_cast({watch, Pid}, #state{socket=S} = State) ->
     case gen_tcp:send(S, <<"idle", 10>>) of
         ok ->
             Status = espop:recv_all(S, 1, []),
-            Pid ! {spop_event, espop_parse:status(Status)},
+            Pid ! {espop_event, espop_parse:status(Status)},
             gen_server:cast(?MODULE, {watch, Pid}),
             {noreply, State};
         {error, Reason} ->
