@@ -2,7 +2,7 @@
 
 -export([playlists/1, playlist_info/1, playlist/1, track/1,
          status/1, offline_status/1, offline_toggle/1,
-         uinfo/1, add/1, query_response/1]).
+         uinfo/1, add/1, query_response/1, image/1]).
 
 -include("spop.hrl").
 
@@ -153,3 +153,10 @@ query_album({obj, Obj}) ->
 query_playlist({obj, Obj}) ->
     #playlist_ref{name = proplists:get_value("name", Obj),
                   uri = proplists:get_value("uri", Obj)}.
+
+image({error, Error}) ->
+    {error, Error};
+image({obj, [{"error", Error}]}) ->
+    {error, Error};
+image({obj, Obj}) ->
+    {jpeg, base64:decode(proplists:get_value("data", Obj, <<>>))}.
