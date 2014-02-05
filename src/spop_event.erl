@@ -1,4 +1,10 @@
+%%  Server that handle asynchronous events from spopd
+%%
+%% ----------------------------------------------------------------------------
+
 -module(spop_event).
+
+-copyright("Christoffer Vikström <chvi77@gmail.com>").
 
 -behaviour(gen_server).
 
@@ -25,20 +31,29 @@ watch() ->
 
 init([Host, Port]) ->
     Ops = [binary, {packet, 0}, {active, false}],
-    {ok, S} = gen_tcp:connect(Host, Port, Ops),
-    {ok, Version} = gen_tcp:recv(S, 0),
-    {ok, #state{spop_version=Version, socket=S, host=Host, port=Port}}.
+    case gen_tcp:connect(Host, Port, Ops) of
+        {ok, S} ->
+            {ok, Version} = gen_tcp:recv(S, 0),
+            {ok, #state{spop_version=Version, socket=S, host=Host, port=Port}};
+        {error, Error} ->
+            {stop, Error}
+    end.
 
 handle_call(Msg, _, State) ->
     error_logger:warning_msg("unexpected: ~p", [Msg]),
     {noreply, State}.
 
 handle_cast({watch, Pid}, #state{socket=S} = State) ->
-    gen_tcp:send(S, <<"idle", 10>>),
-    Status = spop:recv_all(S, 1, []),
-    Pid ! {spop_event, spop_parse:status(Status)},
-    gen_server:cast(?MODULE, {watch, Pid}),
-    {noreply, State};
+    case gen_tcp:send(S, <<"idle", 10>>) of
+        ok ->
+            Status = spop:recv_all(S, 1, []),
+            Pid ! {spop_event, spop_parse:status(Status)},
+            gen_server:cast(?MODULE, {watch, Pid}),
+            {noreply, State};
+        {error, Reason} ->
+            Pid ! {spop_event, {error, Reason}},
+            {noreply, State}
+    end;
 handle_cast(_, State) ->
     {noreply, State}.
 

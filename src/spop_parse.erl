@@ -1,5 +1,7 @@
 -module(spop_parse).
 
+-copyright("Christoffer Vikström <chvi77@gmail.com>").
+
 -export([playlists/1, playlist_info/1, playlist/1, track/1,
          status/1, offline_status/1, offline_toggle/1,
          uinfo/1, add/1, query_response/1, image/1]).

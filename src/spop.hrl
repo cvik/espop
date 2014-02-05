@@ -1,4 +1,9 @@
 %% Record definitions for spop
+%%
+%% ----------------------------------------------------------------------------
+
+
+-copyright("Christoffer Vikström <chvi77@gmail.com>").
 
 -record(playlist_info, {index, name, type, num_tracks, offline}).
 

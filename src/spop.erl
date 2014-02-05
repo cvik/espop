@@ -1,4 +1,10 @@
+Client API to talk to a spopd server
+%%
+%% ----------------------------------------------------------------------------
+
 -module(spop).
+
+-copyright("Christoffer Vikström <chvi77@gmail.com>").
 
 -export([start/0, stop_app/0]).
 
