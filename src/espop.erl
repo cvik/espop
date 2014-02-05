@@ -227,7 +227,7 @@ recv_all(S, Cnt, Acc) ->
                     recv_all(S, Cnt, [Data|Acc]);
                 _ ->
                     recv_all(S, Cnt-1, [Data|Acc])
-            end;    
+            end;
         {error, _} ->
             iolist_to_binary(lists:reverse(Acc))
     end.
