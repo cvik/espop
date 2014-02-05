@@ -1,8 +1,8 @@
-%%  Server that handle asynchronous events from spopd
+%%  Server that handle asynchronous events from espopd
 %%
 %% ----------------------------------------------------------------------------
 
--module(spop_event).
+-module(espop_event).
 
 -copyright("Christoffer Vikström <chvi77@gmail.com>").
 
@@ -46,12 +46,12 @@ handle_call(Msg, _, State) ->
 handle_cast({watch, Pid}, #state{socket=S} = State) ->
     case gen_tcp:send(S, <<"idle", 10>>) of
         ok ->
-            Status = spop:recv_all(S, 1, []),
-            Pid ! {spop_event, spop_parse:status(Status)},
+            Status = espop:recv_all(S, 1, []),
+            Pid ! {spop_event, espop_parse:status(Status)},
             gen_server:cast(?MODULE, {watch, Pid}),
             {noreply, State};
         {error, Reason} ->
-            Pid ! {spop_event, {error, Reason}},
+            Pid ! {espop_event, {error, Reason}},
             {noreply, State}
     end;
 handle_cast(_, State) ->

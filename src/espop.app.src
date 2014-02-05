@@ -1,4 +1,4 @@
-{application, spop,
+{application, espop,
  [{description, "Erlang client library for the Spotify daemon Spop."},
   {vsn, "0.1.0"},
   {registered, []},

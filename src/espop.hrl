@@ -1,4 +1,4 @@
-%% Record definitions for spop
+%% Record definitions for espop
 %%
 %% ----------------------------------------------------------------------------
 

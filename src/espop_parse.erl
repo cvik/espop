@@ -1,4 +1,4 @@
--module(spop_parse).
+-module(espop_parse).
 
 -copyright("Christoffer Vikström <chvi77@gmail.com>").
 
@@ -6,7 +6,7 @@
          status/1, offline_status/1, offline_toggle/1,
          uinfo/1, add/1, query_response/1, image/1]).
 
--include("spop.hrl").
+-include("espop.hrl").
 
 %% Data Parsing ---------------------------------------------------------------
 

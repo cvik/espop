@@ -1,8 +1,8 @@
-%%  Top supervisor for spop
+%%  Top supervisor for espop
 %%
 %% ----------------------------------------------------------------------------
 
--module(spop_sup).
+-module(espop_sup).
 
 -copyright("Christoffer Vikström <chvi77@gmail.com>").
 
@@ -23,7 +23,7 @@ init(no_arg) ->
     Env = application:get_all_env(spop),
     Host = proplists:get_value(host, Env, localhost),
     Port = proplists:get_value(host, Env, 6602),
-    Srv = child(spop_event, spop_event, worker, [Host, Port]),
+    Srv = child(espop_event, espop_event, worker, [Host, Port]),
     Strategy = {one_for_one, 1, 60},
     {ok, {Strategy, [Srv]}}.
 

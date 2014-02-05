@@ -1,8 +1,8 @@
-%%  Application callback for spop
+%%  Application callback for espop
 %%
 %% ----------------------------------------------------------------------------
 
--module(spop_app).
+-module(espop_app).
 
 -copyright("Christoffer Vikström <chvi77@gmail.com>").
 
@@ -13,7 +13,7 @@
 %% ----------------------------------------------------------------------------
 
 start(_, _) ->
-    spop_sup:start_link().
+    espop_sup:start_link().
 
 prep_stop(State) ->
     State.
