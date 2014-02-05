@@ -1,0 +1,9 @@
+{application, spop,
+ [{description, "Erlang client library for the Spotify daemon Spop."},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [kernel,
+                  stdlib]},
+  {mod, {spop_app, no_arg}},
+  {env, []}
+ ]}.

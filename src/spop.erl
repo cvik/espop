@@ -1,161 +1,135 @@
 -module(spop).
 
--export([start_link/0, start_link/2]).
+-export([start/0, stop_app/0]).
 
--compile(export_all).
+-export([ls/0, ls/1, qls/0, qclear/0, qrm/1, add/1, add/2, play/1, play/2,
+         uinfo/1, uadd/1, uplay/1, search/1, play/0, toggle/0, stop/0,
+         seek/1, next/0, prev/0, goto/1, repeat/0, shuffle/0, status/0,
+         image/0, offline_status/0, offline_toggle/1, watch_events/0, quit/0]).
 
--record(state, {spop_version, socket}).
+-export([recv_all/3]).
 
--define(HOST, localhost).
--define(PORT, 6602).
+-include("spop.hrl").
 
-%% Management Api -------------------------------------------------------------
+%% Management Spi -------------------------------------------------------------
 
-start_link() ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [localhost, 6602], []).
+start() ->
+    application:start(spop).
 
-start_link(Server, Port) ->
-    gen_server:start_link({local, ?MODULE}, ?MODULE, [Server, Port], []).
-    
+stop_app() ->
+    application:stop(spop).
+
 %% Api ------------------------------------------------------------------------
 
 ls() ->
-    send(ls, []).
+    spop_parse:playlists(send(ls, [])).
 
 ls(PlaylistNum) ->
-    send(ls, [PlaylistNum]).
+    spop_parse:playlist(send(ls, [PlaylistNum])).
 
 qls() ->
-    send(qls, []).
+    spop_parse:playlist(send(qls, [])).
 
 qclear() ->
-    send(qclear, []).
+    spop_parse:status(send(qclear, [])).
 
 qrm(TrackNum) ->
-    send(qrm, [TrackNum]).
+    spop_parse:status(send(qrm, [TrackNum])).
 
 qrm(FromTrackNum, ToTrackNum) ->
-    send(qrm, [FromTrackNum, ToTrackNum]).
+    spop_parse:status(send(qrm, [FromTrackNum, ToTrackNum])).
 
 add(PlaylistNum) ->
-    send(add, [PlaylistNum]).
+    spop_parse:add(send(add, [PlaylistNum])).
 
 add(PlaylistNum, TrackNum) ->
-    send(add, [PlaylistNum, TrackNum]).
+    spop_parse:add(send(add, [PlaylistNum, TrackNum])).
 
 play(PlaylistNum) ->
-    send(play, [PlaylistNum]).
+    spop_parse:status(send(play, [PlaylistNum])).
 
 play(PlaylistNum, TrackNum) ->
-    send(play, [PlaylistNum, TrackNum]).
+    spop_parse:status(send(play, [PlaylistNum, TrackNum])).
 
 uinfo(Uri) ->
-    send(uinfo, [Uri]).
+    spop_parse:uinfo(send(uinfo, [Uri])).
 
 uadd(Uri) ->
-    send(uadd, [Uri]).
+    spop_parse:status(send(uadd, [Uri])).
 
 uplay(Uri) ->
-    send(uplay, [Uri]).
+    spop_parse:status(send(uplay, [Uri])).
 
 search(Query) ->
-    send(search, [Query]).
+    spop_parse:query_response(send(search, [Query])).
 
 play() ->
-    send(play, []).
+    spop_parse:status(send(play, [])).
 
 toggle() ->
-    send(toggle, []).
+    spop_parse:status(send(toggle, [])).
 
 stop() ->
-    send(stop, []).
+    spop_parse:status(send(stop, [])).
 
 seek(PosMilliSec) ->
-    send(seek, [PosMilliSec]).
+    spop_parse:status(send(seek, [PosMilliSec])).
 
 next() ->
-    send(next, []).
+    spop_parse:status(send(next, [])).
 
 prev() ->
-    send(prev, []).
+    spop_parse:status(send(prev, [])).
 
 goto(TrackNum) ->
-    send(goto, [TrackNum]).
+    spop_parse:status(send(goto, [TrackNum])).
 
 repeat() ->
-    send(repeat, []).
+    spop_parse:status(send(repeat, [])).
 
 shuffle() ->
-    send(shuffle, []).
+    spop_parse:status(send(shuffle, [])).
 
 status() ->
-    send(status, []).
+    spop_parse:status(send(status, [])).
 
 image() ->
     send(image, []).
 
 offline_status() ->
-    send(offline_status, []).
-
-offline_toggle() ->
-    send(offline_toggle, []).
+    spop_parse:offline_status(send('offline-status', [])).
 
 offline_toggle(PlaylistNum) ->
-    send(offline_toggle, [PlaylistNum]).
+    spop_parse:offline_toggle(send('offline-toggle', [PlaylistNum])).
 
-bye() ->
-    send(bye, []).
+watch_events() ->
+    spop_event:watch().
 
-exit() ->
-    send(exit, []).
-
-watch() ->
-    gen_server:cast(?MODULE, {watch, self()}).
-
-%% gen_server callbacks -------------------------------------------------------
-
-init([Server, Port]) ->
-    Ops = [binary, {packet, 0}, {active, false}],
-    {ok, S} = gen_tcp:connect(Server, Port, Ops), 
-    {ok, Version} = gen_tcp:recv(S, 0),
-    {ok, #state{spop_version=Version, socket=S}}.
-
-handle_call(_, _, State) ->
-    {noreply, State}.
-
-handle_cast({watch, Pid}, #state{socket=S} = State) ->
-    gen_tcp:send(S, <<"idle", 10>>),
-    Response = recv_all(S, 1, []),
-    Pid ! {spop_event, Response},
-    gen_server:cast(?MODULE, {watch, Pid}),
-    {noreply, State};
-handle_cast(_, State) ->
-    {noreply, State}.
-
-handle_info(_, State) ->
-    {noreply, State}.
-    
-terminate(_, _) ->
+quit() ->
+    send(quit, []),
     ok.
-
-code_change(_, State) ->
-    State.
 
 %% Internal -------------------------------------------------------------------
 
 send(Cmd, Args) ->
-    send(Cmd, Args, ?HOST, ?PORT).
+    Env = application:get_all_env(spop),
+    Host = proplists:get_value(host, Env, localhost),
+    Port = proplists:get_value(port, Env, 6602),
+    send(Cmd, Args, Host, Port).
 
 send(Cmd, Args, Host, Port) ->
     Ops = [binary, {packet, 0}, {active, false}],
-    {ok, S} = gen_tcp:connect(Host, Port, Ops),
-    {ok, _Version} = gen_tcp:recv(S, 0),
-    CmdBin = pack_command(Cmd, Args),
-    ok = gen_tcp:send(S, <<CmdBin/binary, 10>>),
-    Data = recv_all(S, 1, []),
-    ok = gen_tcp:send(S, <<"bye", 10>>),
-    gen_tcp:close(S),
-    Data.
+    case gen_tcp:connect(Host, Port, Ops) of
+        {ok, S} ->
+            {ok, _Version} = gen_tcp:recv(S, 0),
+            CmdBin = pack_command(Cmd, Args),
+            ok = gen_tcp:send(S, <<CmdBin/binary, 10>>),
+            Data = recv_all(S, 1, []),
+            gen_tcp:close(S),
+            Data;
+        {error, Error} ->
+            {error, Error}
+    end.
 
 pack_command(Cmd, Args) ->
     Str = string:join([to_string(Cmd) | [ to_string(A) || A <- Args ] ], " "),
@@ -164,7 +138,8 @@ pack_command(Cmd, Args) ->
 to_string(T) when is_integer(T) -> integer_to_list(T);
 to_string(T) when is_float(T) -> float_to_list(T);
 to_string(T) when is_atom(T) -> atom_to_list(T);
-to_string(T) when is_binary(T) -> binary_to_list(T).
+to_string(T) when is_binary(T) -> binary_to_list(T);
+to_string(T) when is_list(T) -> "\""++T++"\"".
 
 recv_all(_, 0, Acc) ->
     {ok, Json, []} = rfc4627:decode(iolist_to_binary(lists:reverse(Acc))),
@@ -180,25 +155,4 @@ recv_all(S, Cnt, Acc) ->
             end;    
         {error, _} ->
             iolist_to_binary(lists:reverse(Acc))
-    end.
-
-%% Data Parsing ----------------------------------------------------------------
-
--record(playlist, {index, name, type, num_tracks, offline}).
-
-parse_list_output({obj, [{"playlists", Playlists}]}) ->
-    lists:flatten([ parse_playlist(P) || {obj, P} <- Playlists ]).
-
-parse_playlist(Pl) ->
-    case proplists:get_value("type", Pl) of
-        <<"playlist">> = Type ->
-            Index = proplists:get_value("index", Pl),
-            Name = proplists:get_value("name", Pl),
-            NumTracks = proplists:get_value("tracks", Pl),
-            Offline = proplists:get_value("offline", Pl),
-            #playlist{index=Index, name=Name, type=Type,
-                      num_tracks=NumTracks, offline=Offline};
-        <<"folder">> ->
-            Playlists = proplists:get_value("playlists", Pl),
-            [ parse_playlist(P) || {obj, P} <- Playlists ]
     end.
