@@ -4,6 +4,6 @@
   {registered, []},
   {applications, [kernel,
                   stdlib]},
-  {mod, {spop_app, no_arg}},
+  {mod, {espop_app, no_arg}},
   {env, []}
  ]}.
