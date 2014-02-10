@@ -30,7 +30,7 @@ stop_app() ->
 %% @doc list all your playlists
 -spec ls() -> [#playlist_info{}] | {error, atom()}.
 ls() ->
-    eespop_parse:playlists(send(ls, [])).
+    espop_parse:playlists(send(ls, [])).
 
 %% @doc list the contents of playlist number PlayListNum
 -spec ls(PlayListNum :: integer()) -> [#track{}] | {error, atom()}.
