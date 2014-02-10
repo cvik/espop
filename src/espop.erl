@@ -6,18 +6,21 @@
 
 -copyright("Christoffer Vikström <chvi77@gmail.com>").
 
+%% Aanagement Api
 -export([start/0, stop_app/0]).
 
+%% Api
 -export([ls/0, ls/1, qls/0, qclear/0, qrm/1, qrm/2, add/1, add/2, play/1,
          play/2, uinfo/1, uadd/1, uplay/1, search/1, play/0, toggle/0, stop/0,
          seek/1, next/0, prev/0, goto/1, repeat/0, shuffle/0, status/0,
          image/0, offline_status/0, offline_toggle/1, watch_events/0, quit/0]).
 
--export([recv_all/3]).
+%% Utillity
+-export([find/1]).
 
 -include("espop.hrl").
 
-%% Management Spi -------------------------------------------------------------
+%% Management Api -------------------------------------------------------------
 
 start() ->
     application:start(espop).
@@ -184,6 +187,18 @@ quit() ->
     send(quit, []),
     ok.
 
+%% Utillity -------------------------------------------------------------------
+
+%% @doc Prints all playlists, with index, that match the substring SearchString
+-spec find(string()) -> ok.
+find(SearchString) ->
+    Playlists = ls(),
+    Test = fun(Src, Sub) -> binary:match(Src, Sub) /= nomatch end,
+    [ io:format("~p - ~ts~n", [I, N]) ||
+      #playlist_info{index=I, name=N} <- Playlists,
+      Test(N, list_to_binary(SearchString)) ],
+    ok.
+
 %% Internal -------------------------------------------------------------------
 
 send(Cmd, Args) ->
@@ -199,7 +214,7 @@ send(Cmd, Args, Host, Port) ->
             {ok, _Version} = gen_tcp:recv(S, 0),
             CmdBin = pack_command(Cmd, Args),
             ok = gen_tcp:send(S, <<CmdBin/binary, 10>>),
-            Data = recv_all(S, 1, []),
+            Data = espop_util:recv_lines(S, 1),
             gen_tcp:close(S),
             Data;
         {error, Error} ->
@@ -215,19 +230,3 @@ to_string(T) when is_float(T) -> float_to_list(T);
 to_string(T) when is_atom(T) -> atom_to_list(T);
 to_string(T) when is_binary(T) -> binary_to_list(T);
 to_string(T) when is_list(T) -> "\""++T++"\"".
-
-recv_all(_, 0, Acc) ->
-    {ok, Json, []} = rfc4627:decode(iolist_to_binary(lists:reverse(Acc))),
-    Json;
-recv_all(S, Cnt, Acc) ->
-    case gen_tcp:recv(S, 0) of
-        {ok, Data} ->
-            case binary:match(Data, <<"\n">>) of
-                nomatch ->
-                    recv_all(S, Cnt, [Data|Acc]);
-                _ ->
-                    recv_all(S, Cnt-1, [Data|Acc])
-            end;
-        {error, _} ->
-            iolist_to_binary(lists:reverse(Acc))
-    end.
