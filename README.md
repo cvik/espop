@@ -19,7 +19,10 @@ ok
 2> rr(espop).
 [album,artist,offline_status,playlist,playlist_info,
  playlist_ref,query_response,status,track,uri_info]
-3> espop:play(1)
+3> espop:find("Throne").
+1 - Game of Thrones - Best of Seasons 1, 2 & 3
+156 - Ramin Djawadi – Game Of Thrones
+4> espop:play(1)
 #status{status = <<"playing">>,repeat = false,
          shuffle = false,total_tracks = 19,current_track = 1,
          artist = <<"L'Orchestra Cinematique">>,
