@@ -193,7 +193,9 @@ quit() ->
 -spec find(string()) -> ok.
 find(SearchString) ->
     Playlists = ls(),
-    Test = fun(Src, Sub) -> binary:match(Src, Sub) /= nomatch end,
+    Test = fun(_, <<>>) -> true;
+              (Src, Sub) -> binary:match(Src, Sub) /= nomatch
+           end,
     [ io:format("~p - ~ts~n", [I, N]) ||
       #playlist_info{index=I, name=N} <- Playlists,
       Test(N, list_to_binary(SearchString)) ],

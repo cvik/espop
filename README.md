@@ -1,8 +1,8 @@
 espop - Erlang client library for spop
 =====
 
-This is a client library written in erlang ment to interface with
-the excellent spop server http://github.com/Schnouki/spop. It support
+This is a client library written in erlang to interface with the
+excellent spop server http://github.com/Schnouki/spop. It support
 all current commands of the spopd server. See the facade, espop.erl, for
 documentation and specs.
 
