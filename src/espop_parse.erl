@@ -53,7 +53,7 @@ track({obj, Obj}) ->
     #track{artist = proplists:get_value("artist", Obj),
            title = proplists:get_value("title", Obj),
            album = proplists:get_value("album", Obj),
-           duration = proplists:get_value("duration", Obj),
+           duration = proplists:get_value("duration", Obj, 0) / 1000,
            uri = proplists:get_value("uri", Obj),
            available = proplists:get_value("available", Obj),
            popularity = proplists:get_value("popularity", Obj),
@@ -74,7 +74,7 @@ status({obj, Obj}) ->
             artist = proplists:get_value("artist", Obj),
             title = proplists:get_value("title", Obj),
             album = proplists:get_value("album", Obj),
-            duration = proplists:get_value("duration", Obj),
+            duration = proplists:get_value("duration", Obj, 0) / 1000,
             position = proplists:get_value("position", Obj),
             uri = proplists:get_value("uri", Obj),
             popularity = proplists:get_value("popularity", Obj)}.
