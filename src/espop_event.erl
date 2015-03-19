@@ -10,7 +10,7 @@
 
 -export([start_link/2]).
 
--export([watch/0]).
+-export([watch/1]).
 
 -export([init/1, handle_call/3, handle_cast/2,
          handle_info/2, code_change/3, terminate/2]).
@@ -24,16 +24,14 @@ start_link(Host, Port) ->
 
 %% Api ------------------------------------------------------------------------
 
-watch() ->
-    gen_server:cast(?MODULE, {watch, self()}).
+watch(Pid) ->
+    gen_server:cast(?MODULE, {watch, Pid}).
 
 %% gen_server callbacks -------------------------------------------------------
 
 init([Host, Port]) ->
-    Ops = [binary, {packet, 0}, {active, false}],
-    case gen_tcp:connect(Host, Port, Ops) of
-        {ok, S} ->
-            {ok, Version} = gen_tcp:recv(S, 0),
+    case connect(Host, Port) of
+        {ok, {S, Version}} ->
             {ok, #state{spop_version=Version, socket=S, host=Host, port=Port}};
         {error, Error} ->
             {stop, Error}
@@ -43,15 +41,24 @@ handle_call(Msg, _, State) ->
     error_logger:warning_msg("unexpected: ~p", [Msg]),
     {noreply, State}.
 
-handle_cast({watch, Pid}, #state{socket=S} = State) ->
+handle_cast({watch, Pid}, #state{socket=S, host=Host, port=Port} = State) ->
     case gen_tcp:send(S, <<"idle", 10>>) of
         ok ->
             Status = espop_util:recv_lines(S, 1),
             Pid ! {espop_event, espop_parse:status(Status)},
-            gen_server:cast(?MODULE, {watch, Pid}),
+            watch(Pid),
             {noreply, State};
+        {error, closed} ->
+            case connect(Host, Port) of
+                {ok, {NewS, Version}} ->
+                    watch(Pid),
+                    {noreply, State#state{socket=NewS, spop_version=Version}};
+                {error, Reason} ->
+                    Pid ! {espop_error, Reason},
+                    {noreply, State}
+            end;
         {error, Reason} ->
-            Pid ! {espop_event, {error, Reason}},
+            Pid ! {espop_error, Reason},
             {noreply, State}
     end;
 handle_cast(_, State) ->
@@ -66,3 +73,14 @@ terminate(_, _) ->
 code_change(_, State, _) ->
     State.
 
+%% Internal -------------------------------------------------------------------
+
+connect(Host, Port) ->
+    Ops = [binary, {packet, 0}, {active, false}],
+    case gen_tcp:connect(Host, Port, Ops) of
+        {ok, S} ->
+            {ok, Version} = gen_tcp:recv(S, 0),
+            {ok, {S, Version}};
+        {error, Error} ->
+            {error, Error}
+    end.

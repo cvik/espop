@@ -13,7 +13,7 @@
 -export([ls/0, ls/1, qls/0, qclear/0, qrm/1, qrm/2, add/1, add/2, play/1,
          play/2, uinfo/1, uadd/1, uplay/1, search/1, play/0, toggle/0, stop/0,
          seek/1, next/0, prev/0, goto/1, repeat/0, shuffle/0, status/0,
-         image/0, offline_status/0, offline_toggle/1, watch_events/0, quit/0]).
+         image/0, offline_status/0, offline_toggle/1, watch_events/1, quit/0]).
 
 %% Utillity
 -export([find/1]).
@@ -177,9 +177,9 @@ offline_toggle(PlaylistNum) ->
 %% @doc receive spopd events (status changes) as events sent to the pid
 %%      calling this function. Currently only works for one pid at a time.
 %%      sends {espop_event, #status{}} messages.
--spec watch_events() -> ok.
-watch_events() ->
-    espop_event:watch().
+-spec watch_events(Pid :: pid()) -> ok.
+watch_events(Pid) ->
+    espop_event:watch(Pid).
 
 %% @doc Shut down the spopd server
 -spec quit() -> ok.
@@ -198,8 +198,13 @@ find(SearchString) ->
            end,
     [ io:format("~p - ~ts~n", [I, N]) ||
       #playlist_info{index=I, name=N} <- Playlists,
-      Test(N, list_to_binary(SearchString)) ],
+      Test(to_lower(N), to_lower(SearchString)) ],
     ok.
+
+to_lower(T) when is_list(T) ->
+    list_to_binary(string:to_lower(T));
+to_lower(T) when is_binary(T) ->
+    list_to_binary(string:to_lower(binary_to_list(T))).
 
 %% Internal -------------------------------------------------------------------
 
